@@ -49,6 +49,8 @@ static const NSUInteger kStreamBufferSize = 32768;
 NSString* const kOptionsKeyCookie = @"__cookie";
 // Form boundary for multi-part requests.
 NSString* const kFormBoundary = @"+++++org.apache.cordova.formBoundary";
+static NSTimeInterval updateProgressThrottle = 1.0;
+static NSTimeInterval throttle = 0;
 
 // Writes the given data to the stream in a blocking way.
 // If successful, returns bytesToWrite.
@@ -816,7 +818,12 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
         [downloadProgress setObject:[NSNumber numberWithLongLong:self.bytesExpected] forKey:@"total"];
         CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:downloadProgress];
         [result setKeepCallbackAsBool:true];
-        [self.command.commandDelegate sendPluginResult:result callbackId:callbackId];
+        
+        if (throttle < [NSDate timeIntervalSinceReferenceDate]) {
+            NSLog(@"Throttled");
+            [self.command.commandDelegate sendPluginResult:result callbackId:callbackId];
+            throttle = [NSDate timeIntervalSinceReferenceDate] + updateProgressThrottle;
+        }
     }
 }
 
